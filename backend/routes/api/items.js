@@ -5,6 +5,13 @@ var Comment = mongoose.model("Comment");
 var User = mongoose.model("User");
 var auth = require("../auth");
 const { sendEvent } = require("../../lib/event");
+const { Configuration, OpenAIApi } = require("openai");
+
+const openAIConfig = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const openAI = new OpenAIApi(openAIConfig);
 
 // Preload item objects on routes with ':item'
 router.param("item", function(req, res, next, slug) {
@@ -145,6 +152,21 @@ router.post("/", auth.required, function(req, res, next) {
       }
 
       var item = new Item(req.body.item);
+ 
+
+      if(!item?.image) {
+        try{
+          openAI.createImage({
+            prompt: item?.title,
+            n: 1,
+            size: "256x256",
+          }).then((res)=>{
+            item.image = res.data.data[0].url;
+          });
+        }catch(err) {
+          console.log(err);
+        }
+      }
 
       item.seller = user;
 
